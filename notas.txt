@@ -1,0 +1,27 @@
+###########################   PLANO DE EXECUÇÃO   ###############################
+
+
+Projeto v1: Georeferênciação TSP - cálculo de rota otimizada para 1 veículo e vários pontos de entrega.
+
+1. Inputs do cliente:
+    1.1. Input de coordenadas de ponto base
+    2.1. Input de coordenadas de waypoints (10)
+    3.1. Input de hora
+
+2. Output:
+    2.1. Lista com ordem de visita dos waypoints, hora estimada de chagada
+    2.2. Mapa com rota desenhada e ícones nas coordenadas dos waypoints
+
+
+###########################   RECURSOS   ###############################
+
+
+API Matriz de Distâncias: 
+- Here: https://developer.here.com/documentation/routing/topics/request-matrix-of-routes.html
+- OpenRouteService: https://openrouteservice.org/dev/#/api-docs/matrix
+
+VRP - Vehicle Routing Problem in Python:
+- https://github.com/iRB-Lab/py-ga-VRPTW
+
+
+
