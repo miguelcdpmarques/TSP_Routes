@@ -57,31 +57,61 @@ class Population:
             index = len(self.elements) - 1
         return self.elements[index]
 
-    def select_parents(self):
-        parent_1, parent_2 = self.select_by_odds(), self.select_by_odds()
-        while parent_2 == parent_1:
-            parent_2 = self.select_by_odds()
-        return parent_1, parent_2
+    def tournament_selection(self):
+        first, second = random.randint(0, len(self.elements)-1), random.randint(0, len(self.elements)-1)
+        if self.elements[first].fitness > self.elements[second].fitness:
+            return self.elements[first]
+        else:
+            return self.elements[second]
 
-    def crossover_parents(self, parents, Pc=0.7):
+    def select_parents(self, method='roulette'):
+        possible_methods = ['roulette', 'tournament']
+        if method not in possible_methods:
+            raise ValueError('The value {} is not one of the possible choices: {}'.format(
+                            method, possible_methods))
+        if method == 'roulette':
+            parent_1, parent_2 = self.select_by_odds(), self.select_by_odds()
+            while parent_2 == parent_1:
+                parent_2 = self.select_by_odds()
+            return parent_1, parent_2
+        elif method == 'tournament':
+            parent_1, parent_2 = self.tournament_selection(), self.tournament_selection()
+            while parent_2 == parent_1:
+                parent_2 = self.tournament_selection()
+            return parent_1, parent_2
+
+    def crossover_parents(self, parents, Pc=0.5, method='kSplits'):
+        possible_methods = ['kSplits', 'sameIndexes']
+        if method not in possible_methods:
+            raise ValueError('Method {} not in {}'.format(method, possible_methods))
         parent_1, parent_2 = parents
         if random.random() <= Pc:
             routes = [[], []]
-            for i, parent in enumerate(parents):
-                cp = random.randint(1, len(parent.points) - 2)
-                new_points = parent.points[:cp]
-                remaining_points = [point for point in parents[-i].points if point not in new_points] + [0]
-                routes[i] = new_points + remaining_points
+            if method == 'kSplits':
+                for i, parent in enumerate(parents):
+                    cp = random.randint(1, len(parent.points) - 2)
+                    new_points = parent.points[:cp]
+                    remaining_points = [point for point in parents[-i].points if point not in new_points] + [0]
+                    routes[i] = new_points + remaining_points
+
+            elif method == 'sameIndexes':
+                base_route = [parent_1.points[i] if parent_2.points[i] == point else -1 
+                                                for i, point in enumerate(parent_1.points)]
+                remaining_points = [point for point in parent_1.points if point not in base_route]
+                for i in range(2):
+                    random.shuffle(remaining_points)
+                    iter_remaining_points = iter(remaining_points)
+                    routes[i] = [point if point >-1 else next(iter_remaining_points) for i, point in enumerate(base_route)]
             route1_points, route2_points = routes  
         else: 
             route1_points, route2_points = parent_1.points, parent_2.points
         return Route(points=route1_points), Route(points=route2_points)
 
-    def mutate_points(self, Pm=0.4):
+    def mutate_points(self, Pm=0.1, force_neighbors=True):
         """Applies a random middle points swap with probability of Pm"""
         for element in self.elements[1:]:
             if random.random() <= Pm:
-                element.swap()
+                element.swap(force_neighbors)
         element.fitness = element.route_fitness()        
 
    
@@ -104,10 +134,16 @@ class Route:
             result += cost
         return (1/result)
     
-    def swap(self):
+    def swap(self, force_neighbors=True):
         """Swaps two random middle points"""
-        idx = random.randint(1, len(self.points) - 3)
-        self.points[idx+1], self.points[idx] = self.points[idx], self.points[idx+1]
+        if force_neighbors:
+            idx = random.randint(1, len(self.points) - 3)
+            self.points[idx+1], self.points[idx] = self.points[idx], self.points[idx+1]
+        else:
+            idx1, idx2 = random.randint(1, len(self.points) - 2), random.randint(1, len(self.points) - 2)
+            while idx1 == idx2:
+                idx2 = random.randint(1, len(self.points) - 2)
+            self.points[idx1], self.points[idx2] = self.points[idx2], self.points[idx1]
 
     def map_points(self):
         from map_route import MapRoute
@@ -124,11 +160,11 @@ def run_ga(n_generations=100, len_population=10, crossover=True, mutation=True, 
         newPopulation = Population(0)
         newPopulation.seed_best_genes(population.best_genes)
         for i in range(len_population - 1):
-            parents = population.select_parents()
-            children = population.crossover_parents(parents)
+            parents = population.select_parents(method='tournament')
+            children = population.crossover_parents(parents, method='sameIndexes')
             for child in children:
                 newPopulation.elements.append(child) 
-        newPopulation.mutate_points()
+        newPopulation.mutate_points(force_neighbors=False)
         population = newPopulation
         population.setup_ga()
         print("Best: ", population.elements[0])
@@ -138,13 +174,12 @@ def run_ga(n_generations=100, len_population=10, crossover=True, mutation=True, 
     
 
 if __name__ == '__main__':
-    n_generations = 200
-    len_population = 15
+    n_generations = 50
+    len_population = 20
     best_fitness = 0
-    for i in range(5):
-        route = run_ga(n_generations, len_population, map=False)
-        if route.fitness > best_fitness:
-            best_route, best_fitness = route, route.fitness
+    route = run_ga(n_generations, len_population, map=False)
+    if route.fitness > best_fitness:
+        best_route, best_fitness = route, route.fitness
     best_route.map_points()
     
 
