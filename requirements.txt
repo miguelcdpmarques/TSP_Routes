@@ -9,7 +9,7 @@ folium==0.8.3
 future==0.17.1
 herepy==0.5.0
 idna==2.8
-ipython==7.4.0
+ipython==7.16.3
 ipython-genutils==0.2.0
 jedi==0.13.3
 Jinja2==2.10
